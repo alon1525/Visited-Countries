@@ -18,6 +18,15 @@ db.connect();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+const capitalizeWords = (string) => {
+  if (!string) return "";
+  return string
+    .trim()
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 app.get("/", async (req, res) => {
   //Write your code here.
   try {
@@ -33,7 +42,27 @@ app.get("/", async (req, res) => {
   } catch (err) {
     console.error("Error rendering index page for country code);", err);
   }
-  db.end();
+});
+
+app.post("/add", async (req, res) => {
+  try {
+    const input = req.body["country"];
+    const tag = await db.query(
+      "SELECT country_code FROM countries WHERE country_name = $1",
+      [capitalizeWords(input)]
+    );
+    console.log(tag.rows);
+    if (tag.rows.length !== 0) {
+      const countryCode = tag.rows[0].country_code;
+      console.log(countryCode);
+      await db.query("INSERT INTO visited_countries (country_code) VALUES ($1)", [
+        countryCode,
+      ]);
+      res.redirect("/");
+    }
+  } catch (err) {
+    console.error("Error inserting country code into", err);
+  }
 });
 
 app.listen(port, () => {
